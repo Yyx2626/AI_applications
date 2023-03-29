@@ -68,7 +68,7 @@ import statistics
 
 openai.api_key = ''
 ## Note: You can sign up OpenAI API at https://platform.openai.com/signup
-##       Then, you can create OpenAI API key at https://platform.openai.com/account/api-keys
+##   Then, you can create OpenAI API key at https://platform.openai.com/account/api-keys
 
 
 ### flushing print, reference: https://mail.python.org/pipermail/python-list/2015-November/698426.html
@@ -502,47 +502,47 @@ class AIcommunicator:
             check_elapsed_time(start_time)   # 1.19s
 #        print(completion['usage'])
         est_cost = 0
-		if 'usage' in completion:
-			num_prompt_tokens = completion['usage']['prompt_tokens']
-			num_completion_tokens = completion['usage']['completion_tokens']
-			est_cost_model = AIcommunicator.chat_model
-			
-			if 'gpt-3.5-turbo' in AIcommunicator.chat_model:
-				est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.002/1000
-				est_cost_model = 'gpt-3.5-turbo'
-			elif 'gpt-4' in AIcommunicator.chat_model:
-				est_cost = num_prompt_tokens * 0.06/1000 + num_completion_tokens * 0.12/1000
-				est_cost_model = 'gpt-4'
-			elif 'ada' in AIcommunicator.chat_model:
-				est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.0016/1000
-				est_cost_model = 'ada'
-			elif 'babbage' in AIcommunicator.chat_model:
-				est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.0024/1000
-				est_cost_model = 'babbage'
-			elif 'curie' in AIcommunicator.chat_model:
-				est_cost = (num_prompt_tokens + num_completion_tokens) * 0.0120/1000
-				est_cost_model = 'curie'
-			elif 'davinci' in AIcommunicator.chat_model:
-				est_cost = (num_prompt_tokens + num_completion_tokens) * 0.1200/1000
-				est_cost_model = 'davinci'
-			else:
-				_print(f'Warning: unknown pricing for model {AIcommunicator.chat_model}, so I just use gpt-3.5-turbo instead')
-				est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.002/1000
-				est_cost_model = 'gpt-3.5-turbo'
-			est_cost = round(est_cost, 7)
-			total_est_cost += est_cost
-			total_est_cost = round(total_est_cost, 7)
-			if est_cost_model+' prompt' not in total_cost_items:
-				total_cost_items[est_cost_model+' prompt'] = 0
-			total_cost_items[est_cost_model+' prompt'] += num_prompt_tokens
-			if est_cost_model+' completion' not in total_cost_items:
-				total_cost_items[est_cost_model+' completion'] = 0
-			total_cost_items[est_cost_model+' completion'] += num_completion_tokens
-			update_total_est_cost_file(total_est_cost, program_datetime_stamp, total_cost_items)
-			if cls.should_show_cost:
-				_print(f'Estimated cost ${np.format_float_positional(est_cost)} for {num_prompt_tokens} prompt tokens + {num_completion_tokens} completion tokens with model {est_cost_model}')
-		else:
-			_print(f'Cannot estimate cost with no numbers of tokens returned')
+        if 'usage' in completion:
+            num_prompt_tokens = completion['usage']['prompt_tokens']
+            num_completion_tokens = completion['usage']['completion_tokens']
+            est_cost_model = AIcommunicator.chat_model
+            
+            if 'gpt-3.5-turbo' in AIcommunicator.chat_model:
+                est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.002/1000
+                est_cost_model = 'gpt-3.5-turbo'
+            elif 'gpt-4' in AIcommunicator.chat_model:
+                est_cost = num_prompt_tokens * 0.06/1000 + num_completion_tokens * 0.12/1000
+                est_cost_model = 'gpt-4'
+            elif 'ada' in AIcommunicator.chat_model:
+                est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.0016/1000
+                est_cost_model = 'ada'
+            elif 'babbage' in AIcommunicator.chat_model:
+                est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.0024/1000
+                est_cost_model = 'babbage'
+            elif 'curie' in AIcommunicator.chat_model:
+                est_cost = (num_prompt_tokens + num_completion_tokens) * 0.0120/1000
+                est_cost_model = 'curie'
+            elif 'davinci' in AIcommunicator.chat_model:
+                est_cost = (num_prompt_tokens + num_completion_tokens) * 0.1200/1000
+                est_cost_model = 'davinci'
+            else:
+                _print(f'Warning: unknown pricing for model {AIcommunicator.chat_model}, so I just use gpt-3.5-turbo instead')
+                est_cost = (num_prompt_tokens * 2 + num_completion_tokens) * 0.002/1000
+                est_cost_model = 'gpt-3.5-turbo'
+            est_cost = round(est_cost, 7)
+            total_est_cost += est_cost
+            total_est_cost = round(total_est_cost, 7)
+            if est_cost_model+' prompt' not in total_cost_items:
+                total_cost_items[est_cost_model+' prompt'] = 0
+            total_cost_items[est_cost_model+' prompt'] += num_prompt_tokens
+            if est_cost_model+' completion' not in total_cost_items:
+                total_cost_items[est_cost_model+' completion'] = 0
+            total_cost_items[est_cost_model+' completion'] += num_completion_tokens
+            update_total_est_cost_file(total_est_cost, program_datetime_stamp, total_cost_items)
+            if cls.should_show_cost:
+                _print(f'Estimated cost ${np.format_float_positional(est_cost)} for {num_prompt_tokens} prompt tokens + {num_completion_tokens} completion tokens with model {est_cost_model}')
+        else:
+            _print(f'Cannot estimate cost with no numbers of tokens returned')
         if AIcommunicator.chat_model in ['gpt-3.5-turbo']:
             return completion.choices[0].message.content
         else:
