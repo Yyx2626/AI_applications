@@ -66,6 +66,9 @@ import requests
 import librosa
 import statistics
 
+openai.api_key = ''
+## Note: You can sign up OpenAI API on https://platform.openai.com/signup
+##       Then, you can create OpenAI API key on https://platform.openai.com/account/api-keys
 
 
 ### flushing print, reference: https://mail.python.org/pipermail/python-list/2015-November/698426.html
@@ -360,9 +363,6 @@ class Recorder:
         _print(avg_dBFS_vec)
         return round(max(avg_dBFS_vec) + statistics.stdev(avg_dBFS_vec) * 3 + 2), avg_dBFS_vec
 
-openai.api_key = ''
-## Note: You can sign up OpenAI API on https://platform.openai.com/signup
-##       Then, you can create OpenAI API key on https://platform.openai.com/account/api-keys
 
 chinese_char_pattern = re.compile(r'[\u4e00-\u9fff]+')
 
