@@ -67,8 +67,8 @@ import librosa
 import statistics
 
 openai.api_key = ''
-## Note: You can sign up OpenAI API on https://platform.openai.com/signup
-##       Then, you can create OpenAI API key on https://platform.openai.com/account/api-keys
+## Note: You can sign up OpenAI API at https://platform.openai.com/signup
+##       Then, you can create OpenAI API key at https://platform.openai.com/account/api-keys
 
 
 ### flushing print, reference: https://mail.python.org/pipermail/python-list/2015-November/698426.html
@@ -614,14 +614,14 @@ def main():
     previous_image_prompt = None
     image_filename_prefix = 'image'
     
-    try:
-        suggested_dBFS_threshold, avg_dBFS_vec = Recorder.suggest_dBFS_threshold()
-        should_update_dBFS_threshold = prompt(f'Should I update Recorder.silence_dBFS_threshold to {suggested_dBFS_threshold}? ', default='Y')
-        should_update_dBFS_threshold = strtobool(should_update_dBFS_threshold, False)
-        if should_update_dBFS_threshold:
-            setattr(Recorder, 'silence_dBFS_threshold', suggested_dBFS_threshold)
-    except KeyboardInterrupt:
-        pass
+#    try:
+#        suggested_dBFS_threshold, avg_dBFS_vec = Recorder.suggest_dBFS_threshold()
+#        should_update_dBFS_threshold = prompt(f'Should I update Recorder.silence_dBFS_threshold to {suggested_dBFS_threshold}? ', default='Y')
+#        should_update_dBFS_threshold = strtobool(should_update_dBFS_threshold, False)
+#        if should_update_dBFS_threshold:
+#            setattr(Recorder, 'silence_dBFS_threshold', suggested_dBFS_threshold)
+#    except KeyboardInterrupt:
+#        pass
     
     session = PromptSession()
     print_help()
