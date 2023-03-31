@@ -8,7 +8,7 @@ import sys
 def install_package(package_name):
     print(f'Package {package_name} is not installed. Do you want me to install it (by pip)? (Yes/No) ', end='')
     user_input = input().lower()
-
+    
     if user_input == 'yes' or user_input == 'y':
         try:
             print(f'Now installing {package_name}...')
@@ -45,9 +45,10 @@ ensure_package_installed('librosa')
 
 ### ref: ChatGPT (model: GPT-4.0)
 
-from prompt_toolkit import PromptSession
-from prompt_toolkit import print_formatted_text, prompt
-from prompt_toolkit.formatted_text import FormattedText
+import prompt_toolkit
+#from prompt_toolkit import PromptSession
+from prompt_toolkit import prompt #, print_formatted_text
+#from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.validation import Validator, ValidationError
 
 import sounddevice   # ref: https://python-sounddevice.readthedocs.io/en/0.3.14/examples.html
@@ -71,15 +72,25 @@ openai.api_key = ''
 ##   Then, you can create OpenAI API key at https://platform.openai.com/account/api-keys
 
 
+def my_print_formatted_text(color, str, should_log=True):
+    prompt_toolkit.print_formatted_text(prompt_toolkit.formatted_text.FormattedText([(color, str)]))
+    if should_log and Setting.should_log and Setting.log_filehandle is not None:
+        print(str, file=Setting.log_filehandle)
+        Setting.log_filehandle.flush()
+
+
 ### flushing print, reference: https://mail.python.org/pipermail/python-list/2015-November/698426.html
 def _print(*args, **kwargs):
     file = kwargs.get('file', sys.stdout)
     print(*args, **kwargs)
     file.flush()
+    if Setting.should_log and Setting.log_filehandle is not None and file != Setting.log_filehandle:
+        kwargs['file'] = Setting.log_filehandle
+        _print(*args, **kwargs)
+#        Setting.log_filehandle.flush()
 
 
-### reference: Yyx_system_command_functions.20160607.pl
-
+### reference: yyx_system_command_functions.20190503.py , Yyx_system_command_functions.20160607.pl
 
 def check_elapsed_time(start_time):
     end_time = time.time()
@@ -140,6 +151,21 @@ class NumberValidator(Validator):
 
 class Setting:
     prompt_allow_multiline = False
+    should_log = True
+    log_filename = None
+    log_filehandle = None
+    
+    @classmethod
+    def setup_log_file(cls):
+        if cls.log_filename is None:
+            cls.log_filename = 'yyx_OpenAI_prompt.' + program_datetime_stamp.strftime('%Y%m%d') + '.log'
+        if cls.log_filehandle is None:
+            try:
+                cls.log_filehandle = open(cls.log_filename, 'a', encoding='utf-8')
+            except Exception as e:
+                cls.log_filehandle = None
+                _print(f'Error: {e}')
+            _print(f'\nOpen log file {cls.log_filename} to append log', file=sys.stderr)
     
     @staticmethod
     def show_setting_list_and_prompt(key_value_list):
@@ -170,7 +196,7 @@ class Setting:
         idx = -1
         while idx < 0:
             _print()
-            idx = Setting.show_setting_list_and_prompt([['Recorder'], ['AIcommunicator'], ['prompt_allow_multiline', Setting.prompt_allow_multiline]])
+            idx = Setting.show_setting_list_and_prompt([['Recorder'], ['AIcommunicator'], ['prompt_allow_multiline', Setting.prompt_allow_multiline], ['should_log', Setting.should_log]])
             if idx == 0:
                 return
             elif idx == 1:   # Recorder
@@ -181,11 +207,15 @@ class Setting:
                 Setting.prompt_allow_multiline = not Setting.prompt_allow_multiline
                 if Setting.prompt_allow_multiline:
                     _print('Note: you need to use  Esc + Enter  to submit in multiline mode')
+            elif idx == 4:   # prompt_allow_multiline
+                Setting.should_log = not Setting.should_log
+                if Setting.should_log:
+                    Setting.setup_log_file()
             elif idx != -1:
-                print_formatted_text(FormattedText([('red', f'Error: Unrecognized choice {idx}')]))
+                my_print_formatted_text('red', f'Error: Unrecognized choice {idx}')
             idx = -1
-
-
+    
+    
     @staticmethod
     def get_Recorder_setting():
         keys = ['sample_rate', 'channels', 'dtype', 'silence_dBFS_threshold', 'silence_time_sec_threshold']
@@ -203,7 +233,7 @@ class Setting:
                 setattr(Recorder, key, int(value))
             if key in float_keys:
                 setattr(AIcommunicator, key, float(value))
-
+    
     @staticmethod
     def show_Recorder_setting():
         idx = -1
@@ -223,13 +253,13 @@ class Setting:
                     idx = -1
                     continue
                 except Exception as e:
-                    print_formatted_text(FormattedText([('red', f'Error: {e}')]))
+                    my_print_formatted_text('red', f'Error: {e}')
                     idx = -1
                     continue
             elif idx != -1:
-                print_formatted_text(FormattedText([('red', f'Error: Unrecognized choice {idx}')]))
+                my_print_formatted_text('red', f'Error: Unrecognized choice {idx}')
             idx = -1
-
+    
     @staticmethod
     def get_AIcommunicator_setting():
         keys = ['should_show_elapsed_time', 'should_show_cost', 'image_size', 'speech_filename', 'whisper_languages', 'gtts_speed_ratio', 'chat_model', 'should_speak']
@@ -245,20 +275,20 @@ class Setting:
             if key in str_keys:
                 if key == 'chat_model':
                     if value not in AIcommunicator.list_models():
-                        print_formatted_text(FormattedText([('red', f'Error: Unrecognized model {value}')]))
+                        my_print_formatted_text('red', f'Error: Unrecognized model {value}')
                         return
                 setattr(AIcommunicator, key, value)
             if key in int_keys:
                 if key == 'image_size':
                     if value not in [256, 512, 1024]:
-                        print_formatted_text(FormattedText([('red', f'Error: image_size should be one of 256, 512 or 1024')]))
+                        my_print_formatted_text('red', f'Error: image_size should be one of 256, 512 or 1024')
                         return
                 setattr(AIcommunicator, key, int(value))
             if key in float_keys:
                 setattr(AIcommunicator, key, float(value))
             if key in bool_keys:
                 setattr(AIcommunicator, key, strtobool(value))
-
+    
     @staticmethod
     def show_AIcommunicator_setting():
         bool_keys = ['should_show_elapsed_time', 'should_show_cost', 'should_speak']
@@ -283,11 +313,11 @@ class Setting:
                         idx = -1
                         continue
                     except Exception as e:
-                        print_formatted_text(FormattedText([('red', f'Error: {e}')]))
+                        my_print_formatted_text('red', f'Error: {e}')
                         idx = -1
                         continue
             elif idx != -1:
-                print_formatted_text(FormattedText([('red', f'Error: Unrecognized choice {idx}')]))
+                my_print_formatted_text('red', f'Error: Unrecognized choice {idx}')
             idx = -1
 
 
@@ -327,7 +357,7 @@ class Recorder:
                 self.should_stop = True
         else:
             self.silence_start_time = -1
-
+    
     def start_recording(self, output_filename):
         with sounddevice.InputStream(samplerate=self.sample_rate, channels=self.channels, dtype=self.dtype, callback=self.audio_callback):
             while not self.should_stop:
@@ -344,7 +374,7 @@ class Recorder:
     def record_to(output_filename):
         recorder = Recorder()
         recorder.start_recording(output_filename)
-
+    
     @staticmethod
     def suggest_dBFS_threshold(duration=3):
         _print(f'\nKeep silence for {duration} sec, now testing silence dB ...')
@@ -398,9 +428,9 @@ def update_total_est_cost_file(total_est_cost, datetime_stamp, total_cost_items)
             if F[0] == datetime_str:
                 F = newF
                 has_found = True
-            _print('\t'.join(F), file=fout)
+            print('\t'.join(F), file=fout)
         if not has_found:
-            _print('\t'.join(newF), file=fout)
+            print('\t'.join(newF), file=fout)
 
 
 class AIcommunicator:
@@ -426,7 +456,7 @@ class AIcommunicator:
         if 'whisper' not in total_cost_items:
             total_cost_items['whisper'] = 0
         total_cost_items['whisper'] += audio_sec_length
-        update_total_est_cost_file(total_est_cost, program_datetime_stamp, total_cost_items)
+        update_total_est_cost_file(total_est_cost, program_datetime_stamp.strftime('%Y%m%d%H%M%S'), total_cost_items)
         if cls.should_show_cost:
             _print(f'Estimated cost ${np.format_float_positional(est_cost)} for {audio_sec_length} sec input')
         with open(audio_filename, 'rb') as faudio:
@@ -436,7 +466,7 @@ class AIcommunicator:
                 check_elapsed_time(start_time)   # 1.19s
 #            print(response)
             return response['text']
-
+    
     @staticmethod
     def play_faster(audio_data, sample_rate, speed_ratio):
         stretched_audio_data = librosa.effects.time_stretch(audio_data, rate=speed_ratio)
@@ -449,23 +479,25 @@ class AIcommunicator:
             language = 'zh'
         # Use gTTS to convert text to speech
         start_time = time.time()
-        speech = gtts.gTTS(text=text, lang=language, slow=False)
-        if cls.should_show_elapsed_time:
-            check_elapsed_time(start_time)   # 1.19s
-        # Note: gtts can only support one language at one time   # ref: https://stackoverflow.com/questions/70852444/how-to-use-muti-language-in-gtts-for-single-input-line
+        try:
+            speech = gtts.gTTS(text=text, lang=language, slow=False)
+            # Note: gtts can only support one language at one time   # ref: https://stackoverflow.com/questions/70852444/how-to-use-muti-language-in-gtts-for-single-input-line
+            
+            # Save speech as a WAV file
+            speech.save(cls.speech_filename)
 
-        # Save speech as a WAV file
-        speech.save(cls.speech_filename)
-
-        # Load the WAV file as a NumPy array
-        audio_data, sample_rate = soundfile.read(cls.speech_filename)
-
-        # Play the NumPy array through the PC speaker using the sounddevice library
-        AIcommunicator.play_faster(audio_data, sample_rate, cls.gtts_speed_ratio)
-#        sounddevice.play(audio_data, sample_rate)
-#        sounddevice.wait()
-        
-        os.remove(cls.speech_filename)
+            if cls.should_show_elapsed_time:
+                check_elapsed_time(start_time)   # 1.19s
+            
+            # Load the WAV file as a NumPy array
+            audio_data, sample_rate = soundfile.read(cls.speech_filename)
+            
+            # Play the NumPy array through the PC speaker using the sounddevice library
+            AIcommunicator.play_faster(audio_data, sample_rate, cls.gtts_speed_ratio)
+    #        sounddevice.play(audio_data, sample_rate)
+    #        sounddevice.wait()
+        finally:
+            os.remove(cls.speech_filename)
 
 
     @classmethod
@@ -599,7 +631,7 @@ Type  'L' and Enter  to start recording microphone
 Type or say  'Please draw picture of ...' or 'Can you draw picture of ...' or '请画图...'  to ask DALL-E draw a image
 Type or say  'Please draw picture again' or '请重画'  to ask DALL-E draw image with previous prompt again
 '''
-    print_formatted_text(FormattedText([('orange', usage)]))
+    my_print_formatted_text('orange', usage, should_log=False)
 
 draw_picture_pattern_1 = re.compile('Please draw [A-Za-z0-9 ]* pictures* of (.*)')
 draw_picture_pattern_2 = re.compile('Can you draw [A-Za-z0-9 ]* pictures* of (.*)')
@@ -614,111 +646,126 @@ def main():
     previous_image_prompt = None
     image_filename_prefix = 'image'
     
-#    try:
-#        suggested_dBFS_threshold, avg_dBFS_vec = Recorder.suggest_dBFS_threshold()
-#        should_update_dBFS_threshold = prompt(f'Should I update Recorder.silence_dBFS_threshold to {suggested_dBFS_threshold}? ', default='Y')
-#        should_update_dBFS_threshold = strtobool(should_update_dBFS_threshold, False)
-#        if should_update_dBFS_threshold:
-#            setattr(Recorder, 'silence_dBFS_threshold', suggested_dBFS_threshold)
-#    except KeyboardInterrupt:
-#        pass
-    
-    session = PromptSession()
-    print_help()
-
-    while True:
-        try:
-            user_input = session.prompt('> ', multiline=Setting.prompt_allow_multiline)
-            if user_input == "exit":
-                break
-            if user_input == "Setting":
-                Setting.show_setting()
-                user_input = ''
-                continue
-            if user_input == 'L':
-                try:
-                    recording_filename = recording_filename_prefix + '.' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.wav'
-                    print_formatted_text(FormattedText([('yellow', f'Now recording ...')]))
-                    Recorder.record_to(recording_filename)
-                    is_correct_ans = prompt('Do you think the recording is complete? ', default='Y')
-                    is_recording_correct = strtobool(is_correct_ans, False)
-                    while not is_recording_correct:
-                        os.remove(recording_filename)
+    try:
+        if Setting.should_log:
+            Setting.setup_log_file()
+        
+        _print('[PYTHON-START] ' + time.ctime(), file=sys.stderr)
+        
+    #    try:
+    #        suggested_dBFS_threshold, avg_dBFS_vec = Recorder.suggest_dBFS_threshold()
+    #        should_update_dBFS_threshold = prompt(f'Should I update Recorder.silence_dBFS_threshold to {suggested_dBFS_threshold}? ', default='Y')
+    #        should_update_dBFS_threshold = strtobool(should_update_dBFS_threshold, False)
+    #        if should_update_dBFS_threshold:
+    #            setattr(Recorder, 'silence_dBFS_threshold', suggested_dBFS_threshold)
+    #    except KeyboardInterrupt:
+    #        pass
+        
+        session = prompt_toolkit.PromptSession()
+        print_help()
+        
+        while True:
+            try:
+                user_input = session.prompt('> ', multiline=Setting.prompt_allow_multiline)
+                if Setting.should_log and Setting.log_filehandle is not None:
+                    _print('> ' + user_input, file=Setting.log_filehandle)
+                if user_input == "exit":
+                    break
+                if user_input == "Setting":
+                    Setting.show_setting()
+                    user_input = ''
+                    continue
+                if user_input == 'L':
+                    try:
                         recording_filename = recording_filename_prefix + '.' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.wav'
-                        print_formatted_text(FormattedText([('yellow', f'Now recording ...')]))
+                        my_print_formatted_text('yellow', f'Now recording ...')
                         Recorder.record_to(recording_filename)
                         is_correct_ans = prompt('Do you think the recording is complete? ', default='Y')
                         is_recording_correct = strtobool(is_correct_ans, False)
-                    
-                    print_formatted_text(FormattedText([('violet', f'Now transcripting by OpenAI-whisper ...')]))
-                    transcript = AIcommunicator.recognize_speech_whisper(recording_filename)
-                    print_formatted_text(FormattedText([('yellow', f'Recognized: {transcript}')]))
-                    is_correct_ans = prompt('Do you think the transcription is accurate? ', default='Y')
-                    is_transcript_correct = strtobool(is_correct_ans, False)
-                    while not is_transcript_correct:
-                        print_formatted_text(FormattedText([('violet', f'Now transcripting by OpenAI-whisper ...')]))
+                        while not is_recording_correct:
+                            os.remove(recording_filename)
+                            recording_filename = recording_filename_prefix + '.' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.wav'
+                            my_print_formatted_text('yellow', f'Now recording ...')
+                            Recorder.record_to(recording_filename)
+                            is_correct_ans = prompt('Do you think the recording is complete? ', default='Y')
+                            is_recording_correct = strtobool(is_correct_ans, False)
+                        
+                        my_print_formatted_text('violet', f'Now transcripting by OpenAI-whisper ...')
                         transcript = AIcommunicator.recognize_speech_whisper(recording_filename)
-                        print_formatted_text(FormattedText([('yellow', f'Recognized: {transcript}')]))
+                        my_print_formatted_text('yellow', f'Recognized: {transcript}')
                         is_correct_ans = prompt('Do you think the transcription is accurate? ', default='Y')
                         is_transcript_correct = strtobool(is_correct_ans, False)
-                    user_input = transcript
-                    os.remove(recording_filename)
+                        while not is_transcript_correct:
+                            my_print_formatted_text('violet', f'Now transcripting by OpenAI-whisper ...')
+                            transcript = AIcommunicator.recognize_speech_whisper(recording_filename)
+                            my_print_formatted_text('yellow', f'Recognized: {transcript}')
+                            is_correct_ans = prompt('Do you think the transcription is accurate? ', default='Y')
+                            is_transcript_correct = strtobool(is_correct_ans, False)
+                        user_input = transcript
+                        os.remove(recording_filename)
+                        if empty_pattern.search(user_input):
+                            continue
+                    except KeyboardInterrupt:
+                        # Ctrl+C, exit loop
+                        os.remove(recording_filename)
+                        user_input = ''
+                    except Exception as e:
+                        _print(f'{e}')
+                        user_input = ''
+                
+                image_prompt = None
+                search_rlt = draw_picture_pattern_1.search(user_input)
+                if search_rlt is not None:
+                    image_prompt = search_rlt.group(1)
+                    if empty_pattern.search(image_prompt) is not None:
+                        image_prompt = None
+                search_rlt = draw_picture_pattern_2.search(user_input)
+                if search_rlt is not None:
+                    image_prompt = search_rlt.group(1)
+                    if empty_pattern.search(image_prompt) is not None:
+                        image_prompt = None
+                search_rlt = draw_picture_pattern_3.search(user_input)
+                if search_rlt is not None:
+                    image_prompt = search_rlt.group(1)
+                    if empty_pattern.search(image_prompt) is not None:
+                        image_prompt = None
+                
+                search_rlt = draw_picture_again_pattern_1.search(user_input)
+                if search_rlt is not None:
+                    image_prompt = previous_image_prompt
+                search_rlt = draw_picture_again_pattern_2.search(user_input)
+                if search_rlt is not None:
+                    image_prompt = previous_image_prompt
+                
+                if image_prompt is not None:
+                    previous_image_prompt = image_prompt
+                    my_print_formatted_text('cyan', f'Now asking DALL-E to draw: {image_prompt}')
+                    image_urls = AIcommunicator.generate_image(image_prompt)
+                    for image_url in image_urls:
+                        image_filename = image_filename_prefix + '.' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.jpg'
+                        download_image(image_url, image_filename)
+                        my_print_formatted_text('cyan', f'Download generated image to {image_filename}')
+                else:
                     if empty_pattern.search(user_input):
                         continue
-                except KeyboardInterrupt:
-                    # Ctrl+C, exit loop
-                    user_input = ''
-                except Exception as e:
-                    _print(f'{e}')
-                    user_input = ''
-            
-            image_prompt = None
-            search_rlt = draw_picture_pattern_1.search(user_input)
-            if search_rlt is not None:
-                image_prompt = search_rlt.group(1)
-                if empty_pattern.search(image_prompt) is not None:
-                    image_prompt = None
-            search_rlt = draw_picture_pattern_2.search(user_input)
-            if search_rlt is not None:
-                image_prompt = search_rlt.group(1)
-                if empty_pattern.search(image_prompt) is not None:
-                    image_prompt = None
-            search_rlt = draw_picture_pattern_3.search(user_input)
-            if search_rlt is not None:
-                image_prompt = search_rlt.group(1)
-                if empty_pattern.search(image_prompt) is not None:
-                    image_prompt = None
-            
-            search_rlt = draw_picture_again_pattern_1.search(user_input)
-            if search_rlt is not None:
-                image_prompt = previous_image_prompt
-            search_rlt = draw_picture_again_pattern_2.search(user_input)
-            if search_rlt is not None:
-                image_prompt = previous_image_prompt
-            
-            if image_prompt is not None:
-                previous_image_prompt = image_prompt
-                print_formatted_text(FormattedText([('cyan', f'Now asking DALL-E to draw: {image_prompt}')]))
-                image_urls = AIcommunicator.generate_image(image_prompt)
-                for image_url in image_urls:
-                    image_filename = image_filename_prefix + '.' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.jpg'
-                    download_image(image_url, image_filename)
-                    print_formatted_text(FormattedText([('cyan', f'Download generated image to {image_filename}')]))
-            else:
-                if empty_pattern.search(user_input):
-                    continue
-                print_formatted_text(FormattedText([('violet', f'Now waiting for ChatGPT response ...')]))
-                ans = AIcommunicator.chat(user_input)
-                if ans.startswith('Error:'):
-                    print_formatted_text(FormattedText([('red', ans)]))
-                else:
-                    print_formatted_text(FormattedText([('lightgreen', ans)]))
-                if AIcommunicator.should_speak:
-                    print_formatted_text(FormattedText([('violet', f'Now asking gtts to speak ...')]))
-                    AIcommunicator.gtts_speak(ans)
-        except KeyboardInterrupt:
-            # Ctrl+C, exit loop
-            break
+                    my_print_formatted_text('violet', f'Now waiting for ChatGPT response ...')
+                    ans = AIcommunicator.chat(user_input)
+                    if ans.startswith('Error:'):
+                        my_print_formatted_text('red', ans)
+                    else:
+                        my_print_formatted_text('lightgreen', ans)
+                    if AIcommunicator.should_speak:
+                        my_print_formatted_text('violet', f'Now asking gtts to speak ...')
+                        AIcommunicator.gtts_speak(ans)
+            except KeyboardInterrupt:
+                # Ctrl+C, exit loop
+                break
+    finally:
+        _print('[PYTHON-END] ' + time.ctime(), file=sys.stderr)
+        if Setting.log_filehandle is not None:
+            _print(f'Close log file {Setting.log_filename}', file=sys.stderr)
+            Setting.log_filehandle.close()
+            Setting.log_filehandle = None
 
 if __name__ == "__main__":
     main()
